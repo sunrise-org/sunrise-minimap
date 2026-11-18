@@ -95,7 +95,7 @@ impl Map {
             return;
         };
         let corner = Corner::ALL[host.setting_choice("corner").unwrap_or(1) as usize];
-        if debug && corner == Corner::TopLeft {
+        if debug && corner.top() {
             return;
         }
         let size = [64., 96., 128.][host.setting_choice("size").unwrap_or(1) as usize];
