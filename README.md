@@ -10,4 +10,4 @@ On Linux x86-64, run `bash tools/build-sdk.sh`. It verifies the pinned Sunrise S
 
 The mod owns the tile cache and dynamic HUD texture. On the current SDK one non-cancelling frame patch reads the game's colour palette and whether the debug overlay is visible. Remove that patch once those general reads are available in a signed SDK. The mod does not include a copy of the game's palette or textures.
 
-Licence: [PolyForm Shield 1.0.0](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) for the DCO sign-off.
+Licence: [MIT](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) for the DCO sign-off.
