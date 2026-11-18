@@ -1,0 +1,19 @@
+{
+  "minimap.enabled": "Show minimap",
+  "minimap.corner": "Corner",
+  "minimap.top_left": "Top left",
+  "minimap.top_right": "Top right",
+  "minimap.bottom_left": "Bottom left",
+  "minimap.bottom_right": "Bottom right",
+  "minimap.size": "Size",
+  "minimap.small": "Small",
+  "minimap.medium": "Medium",
+  "minimap.large": "Large",
+  "minimap.round": "Round map",
+  "minimap.zoom": "Blocks per pixel",
+  "minimap.zoom.half": "0.5",
+  "minimap.zoom.one": "1",
+  "minimap.zoom.two": "2",
+  "minimap.zoom.four": "4",
+  "minimap.rotate": "Rotate with player"
+}
