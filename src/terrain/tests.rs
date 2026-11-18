@@ -131,7 +131,10 @@ fn zoomed_out_pixels_do_not_alias_distant_tiles_or_their_missing_neighbours() {
         scale: 4.,
         round: false,
     };
-    t.compose(v, &[0, 0xff0000, 0x00ff00]);
+    let mut palette = [[0; 4]; MAP_COLORS];
+    palette[1] = [255, 0, 0, 255];
+    palette[2] = [0, 255, 0, 255];
+    t.compose(v, &palette);
     let pixel = |x: usize| &t.image[(64 * SIDE + x) * 4..(64 * SIDE + x) * 4 + 4];
     assert_eq!(pixel(32), [220, 0, 0, 255]);
     assert_eq!(pixel(64), [20, 20, 20, 200]);
