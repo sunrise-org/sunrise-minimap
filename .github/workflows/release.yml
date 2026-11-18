@@ -48,11 +48,10 @@ jobs:
       - name: Check the package against its checksum
         working-directory: dist
         run: |
-          if [[ "$(awk '{print $2}' SHA256SUMS)" != minimap.smod ]]; then
-            echo "SHA256SUMS must list exactly minimap.smod" >&2
+          if [[ "$(cat SHA256SUMS)" != "$(sha256sum minimap.smod)" ]]; then
+            echo "SHA256SUMS must be exactly the checksum of minimap.smod" >&2
             exit 1
           fi
-          sha256sum --strict --check SHA256SUMS
       - name: Sign the package
         id: sign
         # A minisign secret key made without a password (`minisign -G -W`). Unset publishes unsigned.
@@ -74,7 +73,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SIGNED: ${{ steps.sign.outcome == 'success' }}
         run: |
-          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME" --jq .sha)
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF" --jq .sha)
           if [[ "$tagged" != "$GITHUB_SHA" ]]; then
             echo "Tag $GITHUB_REF_NAME moved to $tagged after this build of $GITHUB_SHA" >&2
             exit 1
