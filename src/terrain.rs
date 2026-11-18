@@ -23,6 +23,7 @@ struct Column {
 }
 type Columns = [Column; 256];
 struct Tile {
+    head: Option<i32>,
     columns: Box<Columns>,
     scanned: Instant,
 }
@@ -95,7 +96,10 @@ impl Terrain {
         }
     }
     pub fn loaded(&mut self, key: Key) {
-        self.forget(key);
+        // A whole-column resend replaces the scan, not the visible tile.
+        if self.partial.as_ref().is_some_and(|p| p.0 == key) {
+            self.partial = None;
+        }
         self.enqueue(key);
     }
     fn enqueue(&mut self, key: Key) {
@@ -113,36 +117,43 @@ impl Terrain {
             self.enqueue(key);
         }
     }
-    pub fn update(&mut self, read: &Reader<'_>, view: View, radius: i32, head: Option<i32>) {
-        let now = Instant::now();
-        let center = [(view.x.floor() as i32) >> 4, (view.z.floor() as i32) >> 4];
-        let area = Area {
-            center,
+    fn set_area(&mut self, area: Area) {
+        if self.area == Some(area) {
+            return;
+        }
+        let Area {
+            center: [cx, cz],
             radius,
             head,
-        };
-        if self.area != Some(area) {
-            let new_layer = self.area.is_some_and(|a| a.head != head);
-            let before = self.tiles.len();
-            self.tiles
-                .retain(|&k, _| !new_layer && area.distance(k) <= radius);
-            self.changed |= before != self.tiles.len();
-            self.area = Some(area);
-            // Re-rank invalidations as well as missing tiles when the player crosses a chunk edge.
-            for (_, key) in std::mem::take(&mut self.queue) {
-                self.enqueue(key);
-            }
-            if let Some((key, _, _)) = self.partial.take() {
-                self.enqueue(key);
-            }
-            for x in center[0] - radius..=center[0] + radius {
-                for z in center[1] - radius..=center[1] + radius {
-                    if !self.tiles.contains_key(&[x, z]) {
-                        self.enqueue([x, z]);
-                    }
+        } = area;
+        let before = self.tiles.len();
+        self.tiles.retain(|&k, _| area.distance(k) <= radius);
+        self.changed |= before != self.tiles.len();
+        self.area = Some(area);
+        // Re-rank invalidations as well as missing tiles as the player moves.
+        for (_, key) in std::mem::take(&mut self.queue) {
+            self.enqueue(key);
+        }
+        if let Some((key, _, _)) = self.partial.take() {
+            self.enqueue(key);
+        }
+        for x in cx - radius..=cx + radius {
+            for z in cz - radius..=cz + radius {
+                let key = [x, z];
+                if self.tiles.get(&key).is_none_or(|t| t.head != head) {
+                    self.enqueue(key);
                 }
             }
         }
+    }
+    pub fn update(&mut self, read: &Reader<'_>, view: View, radius: i32, head: Option<i32>) {
+        let now = Instant::now();
+        let center = [(view.x.floor() as i32) >> 4, (view.z.floor() as i32) >> 4];
+        self.set_area(Area {
+            center,
+            radius,
+            head,
+        });
         while let Some(&(time, key)) = self.delayed.first()
             && time <= now
         {
@@ -188,6 +199,7 @@ impl Terrain {
                     self.tiles.insert(
                         k,
                         Tile {
+                            head,
                             columns,
                             scanned: Instant::now(),
                         },

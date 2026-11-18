@@ -72,6 +72,7 @@ fn moving_turning_and_removing_tiles_invalidate_the_right_pixels() {
     t.tiles.insert(
         [-1, -1],
         Tile {
+            head: None,
             columns: Box::new(
                 [Column {
                     color: 1,
@@ -123,6 +124,7 @@ fn chunk_changes_coalesce_and_an_unload_discards_partial_work() {
     t.tiles.insert(
         [0, 0],
         Tile {
+            head: None,
             columns: Box::new([Column::default(); 256]),
             scanned,
         },
@@ -131,7 +133,23 @@ fn chunk_changes_coalesce_and_an_unload_discards_partial_work() {
     t.invalidate([0, 0]);
     assert_eq!(t.delayed.first(), Some(&(scanned + RESCAN, [0, 0])));
     assert_eq!(t.delayed.len(), 1);
+    // Neither an underground jump nor a resend may erase a published tile.
+    t.queue.clear();
+    let area = t.area.unwrap();
+    t.set_area(Area {
+        head: Some(11),
+        ..area
+    });
+    assert!(t.tiles.contains_key(&[0, 0]));
+    assert_eq!(t.queue.first(), Some(&(0, [0, 0])));
+    assert!(!t.changed);
+    t.queue.clear();
     t.partial = Some(([0, 0], 1, Box::new([Column::default(); 256])));
+    t.loaded([0, 0]);
+    assert!(t.partial.is_none());
+    assert!(t.tiles.contains_key(&[0, 0]));
+    assert_eq!(t.queue.first(), Some(&(0, [0, 0])));
+    assert!(!t.changed);
     t.forget([0, 0]);
     assert!(t.partial.is_none());
     assert!(t.changed);
