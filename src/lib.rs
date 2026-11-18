@@ -4,11 +4,8 @@ use mod_api::{
     client::hud_layout::{GuiDraw, PoseOp},
     *,
 };
-use std::{
-    cell::{Cell, RefCell},
-    sync::OnceLock,
-};
-use terrain::{Reader, SIDE, Terrain, View};
+use std::{cell::RefCell, sync::OnceLock};
+use terrain::{MAP_COLORS, Reader, SIDE, Terrain, View, read_colors};
 
 const TEXTURE: &str = "minimap:dynamic/terrain";
 fn texture() -> &'static Identifier {
@@ -17,8 +14,6 @@ fn texture() -> &'static Identifier {
 }
 
 thread_local! {
-    // The patch and callbacks run on the rendering thread of the same window.
-    static FRAME: Cell<(&'static [u32], bool)> = const {Cell::new((&[], false))};
     static MAP: RefCell<Map> = RefCell::default();
     // The sprite and the flip never change; only translation and heading vary per frame.
     static ARROW: RefCell<[GuiDraw; 3]> = RefCell::new([
@@ -27,18 +22,14 @@ thread_local! {
         GuiDraw::Pop,
     ]);
 }
-/// Called only by our read-only frame HEAD. Remove when the reads land in a signed SDK.
-#[doc(hidden)]
-pub fn frame_reads(palette: &'static [u32], debug: bool) {
-    FRAME.set((palette, debug));
-}
-
 #[derive(Default)]
 struct Map {
     terrain: Terrain,
     level: Option<LevelRef>,
     // Height, ceiling, and fluid identities are registry data for this level.
     info: Option<(LevelDimensionType, [Option<FluidKey>; 4])>,
+    // Decoded map colours by packed ID, read from the game once per level.
+    colors: Option<Box<[[u8; 4]; MAP_COLORS]>>,
     texture: bool,
     pending: bool,
     look: Option<(View, Corner, f32)>,
@@ -66,16 +57,18 @@ impl Map {
         if host.hud_mode() != HudMode::AllVisible {
             return;
         }
-        let (palette, debug) = FRAME.get();
-        if palette.is_empty() {
-            return;
-        }
         let Some(level) = host.level(host.dimension()) else {
             return;
         };
         if self.level != Some(level) {
             self.clear(host);
             self.level = Some(level);
+        }
+        if self.colors.is_none() {
+            self.colors = read_colors(host);
+            if self.colors.is_none() {
+                return;
+            }
         }
         let Some([x, y, z]) = player.eye_position(host) else {
             return;
@@ -101,7 +94,7 @@ impl Map {
             return;
         };
         let corner = Corner::ALL[host.setting_choice("corner").unwrap_or(1) as usize];
-        if debug && corner.top() {
+        if host.debug_overlay_visible() && corner.top() {
             return;
         }
         let size = [64., 96., 128.][host.setting_choice("size").unwrap_or(1) as usize];
@@ -130,7 +123,9 @@ impl Map {
             radius,
             head,
         );
-        self.pending |= self.terrain.compose(view, palette);
+        if let Some(colors) = &self.colors {
+            self.pending |= self.terrain.compose(view, colors);
+        }
         if self.pending {
             let side = SIDE as u32;
             let r = if self.texture {

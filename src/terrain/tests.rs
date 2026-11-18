@@ -83,7 +83,9 @@ fn moving_turning_and_removing_tiles_invalidate_the_right_pixels() {
             scanned: Instant::now(),
         },
     );
-    let palette = [0, 0xff_00_ff]; // Synthetic palette: no game RGB data in the fixture.
+    // Synthetic colours: no game RGB data in the fixture.
+    let mut palette = [[0; 4]; MAP_COLORS];
+    palette[1] = [255, 0, 255, 255];
     assert!(t.compose(v, &palette));
     let center = (64 * SIDE + 64) * 4;
     assert_eq!(&t.image[center..center + 4], &[220, 0, 220, 255]);
