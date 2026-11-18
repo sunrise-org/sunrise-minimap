@@ -20,6 +20,12 @@ thread_local! {
     // The patch and callbacks run on the rendering thread of the same window.
     static FRAME: Cell<(&'static [u32], bool)> = const {Cell::new((&[], false))};
     static MAP: RefCell<Map> = RefCell::default();
+    // The sprite and the flip never change; only translation and heading vary per frame.
+    static ARROW: RefCell<[GuiDraw; 3]> = RefCell::new([
+        GuiDraw::Push(vec![PoseOp::Translate(0., 0.), PoseOp::Rotate(0.), PoseOp::Scale(1., -1.)]),
+        GuiDraw::AtlasSprite { sprite: "map/decorations/player".into(), x:-4, y:-4, w:8, h:8, color:u32::MAX },
+        GuiDraw::Pop,
+    ]);
 }
 /// Called only by our read-only frame HEAD. Remove when the reads land in a signed SDK.
 #[doc(hidden)]
@@ -219,22 +225,13 @@ impl Hooks for Minimap {
         );
         let (cx, cy) = (x + size / 2., y + size / 2.);
         let angle = if view.rotate { 180. } else { 360. + view.yaw };
-        let _ = draw.gui_paint(&[
-            GuiDraw::Push(vec![
-                PoseOp::Translate(cx, cy),
-                PoseOp::Rotate(angle.to_radians()),
-                PoseOp::Scale(1., -1.),
-            ]),
-            GuiDraw::AtlasSprite {
-                sprite: "map/decorations/player".into(),
-                x: -4,
-                y: -4,
-                w: 8,
-                h: 8,
-                color: u32::MAX,
-            },
-            GuiDraw::Pop,
-        ]);
+        ARROW.with_borrow_mut(|ops| {
+            if let GuiDraw::Push(pose) = &mut ops[0] {
+                pose[0] = PoseOp::Translate(cx, cy);
+                pose[1] = PoseOp::Rotate(angle.to_radians());
+            }
+            let _ = draw.gui_paint(ops);
+        });
         if view.rotate {
             let [nx, ny] = view.north();
             let reach = size / 2. - 6.;
