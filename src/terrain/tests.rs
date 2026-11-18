@@ -104,6 +104,39 @@ fn moving_turning_and_removing_tiles_invalidate_the_right_pixels() {
 }
 
 #[test]
+fn zoomed_out_pixels_do_not_alias_distant_tiles_or_their_missing_neighbours() {
+    let mut t = Terrain::default();
+    for (cx, color) in [(-8, 1), (8, 2)] {
+        t.tiles.insert(
+            [cx, 0],
+            Tile {
+                head: None,
+                columns: Box::new(
+                    [Column {
+                        color,
+                        ..Column::default()
+                    }; 256],
+                ),
+                scanned: Instant::now(),
+            },
+        );
+    }
+    let v = View {
+        x: 0.,
+        z: 0.,
+        yaw: 0.,
+        rotate: false,
+        scale: 4.,
+        round: false,
+    };
+    t.compose(v, &[0, 0xff0000, 0x00ff00]);
+    let pixel = |x: usize| &t.image[(64 * SIDE + x) * 4..(64 * SIDE + x) * 4 + 4];
+    assert_eq!(pixel(32), [220, 0, 0, 255]);
+    assert_eq!(pixel(64), [20, 20, 20, 200]);
+    assert_eq!(pixel(96), [0, 220, 0, 255]);
+}
+
+#[test]
 fn chunk_changes_coalesce_and_an_unload_discards_partial_work() {
     let mut t = Terrain {
         area: Some(Area {

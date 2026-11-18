@@ -211,17 +211,29 @@ impl Terrain {
             }
         }
     }
-    fn column(&self, x: i32, z: i32) -> Option<Column> {
-        self.tiles
-            .get(&[x >> 4, z >> 4])
-            .map(|t| t.columns[((z & 15) * 16 + (x & 15)) as usize])
-            .filter(|c| c.color != 0)
-    }
     pub fn compose(&mut self, view: View, palette: &[u32]) -> bool {
         if !self.changed && self.composed.is_some_and(|old| !view.differs(old)) {
             return false;
         }
         let (r, f) = view.axes();
+        // Direct-map the low bits of both chunk coordinates. Adjacent texels (and
+        // their north neighbours) share tiles, including tiles not loaded yet.
+        // The full key distinguishes collisions at every zoom and orientation.
+        let mut cache = [None; 64];
+        let mut column = |x: i32, z: i32| {
+            let key = [x >> 4, z >> 4];
+            let slot = &mut cache[((key[1] & 7) * 8 + (key[0] & 7)) as usize];
+            let tile = match *slot {
+                Some((cached, tile)) if cached == key => tile,
+                _ => {
+                    let tile = self.tiles.get(&key);
+                    *slot = Some((key, tile));
+                    tile
+                }
+            }?;
+            let cell = tile.columns[((z & 15) * 16 + (x & 15)) as usize];
+            (cell.color != 0).then_some(cell)
+        };
         self.image.resize(SIDE * SIDE * 4, 0);
         for j in 0..SIDE {
             for i in 0..SIDE {
@@ -239,11 +251,9 @@ impl Terrain {
                 } else {
                     let x = (view.x + f64::from(view.scale) * (u * r[0] - v * f[0])).floor() as i32;
                     let z = (view.z + f64::from(view.scale) * (u * r[1] - v * f[1])).floor() as i32;
-                    self.column(x, z).map_or([20, 20, 20, 200], |c| {
-                        let shade = c.shade(
-                            self.column(x, z - 1).map_or(c.height, |n| n.height),
-                            (x ^ z) & 1,
-                        );
+                    column(x, z).map_or([20, 20, 20, 200], |c| {
+                        let shade =
+                            c.shade(column(x, z - 1).map_or(c.height, |n| n.height), (x ^ z) & 1);
                         palette.get(usize::from(c.color)).map_or([0; 4], |rgb| {
                             let ch = |s: u32| (((rgb >> s) & 255) * shade / 255) as u8;
                             [ch(16), ch(8), ch(0), 255]
