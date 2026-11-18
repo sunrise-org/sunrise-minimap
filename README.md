@@ -14,4 +14,14 @@ Push a tag `v<version>` matching `version` in `sunrise-mod.toml`. The `Release` 
 
 The mod owns the tile cache and dynamic HUD texture. On the current SDK one non-cancelling frame patch reads the game's colour palette and whether the debug overlay is visible. Remove that patch once those general reads are available in a signed SDK. The mod does not include a copy of the game's palette or textures.
 
+## Verifying releases
+
+Release packages are signed with Sunrise's official-mod key, [`minisign.pub`](minisign.pub) (key ID `69DA4581EF8B9FDA`). Download `minimap.smod` and its `minimap.smod.minisig` from the same release into one folder, then run:
+
+```sh
+minisign -Vm minimap.smod -p minisign.pub
+```
+
+Once the mod is listed in Sunrise's registry, its entry pins this key, and the launcher refuses a registry install whose signature doesn't verify against it.
+
 Licence: [MIT](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) for the DCO sign-off.
