@@ -9,12 +9,5 @@ capabilities = ["registries"]
 
 [native]
 game = "26.3"
-sunrise = "68b51161354df882c903467bd891a7996e08c11f"
+sunrise = "a2dac1ee7526d80cf355722962d0195c16f79bd2"
 mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"
-
-[[native.mixin]]
-id = "frame-reads"
-target = "sunrise_client::game::native_hooks::render_frame_pre::Game::native_render_frame_pre"
-kind = "HEAD"
-helper = "src/mixins/frame_reads.rs"
-bindings = [{ name = "game", ty = "&Game<'_>", value = "&*self" }]

@@ -83,7 +83,9 @@ fn moving_turning_and_removing_tiles_invalidate_the_right_pixels() {
             scanned: Instant::now(),
         },
     );
-    let palette = [0, 0xff_00_ff]; // Synthetic palette: no game RGB data in the fixture.
+    // Synthetic colours: no game RGB data in the fixture.
+    let mut palette = [[0; 4]; MAP_COLORS];
+    palette[1] = [255, 0, 255, 255];
     assert!(t.compose(v, &palette));
     let center = (64 * SIDE + 64) * 4;
     assert_eq!(&t.image[center..center + 4], &[220, 0, 220, 255]);
@@ -129,7 +131,10 @@ fn zoomed_out_pixels_do_not_alias_distant_tiles_or_their_missing_neighbours() {
         scale: 4.,
         round: false,
     };
-    t.compose(v, &[0, 0xff0000, 0x00ff00]);
+    let mut palette = [[0; 4]; MAP_COLORS];
+    palette[1] = [255, 0, 0, 255];
+    palette[2] = [0, 255, 0, 255];
+    t.compose(v, &palette);
     let pixel = |x: usize| &t.image[(64 * SIDE + x) * 4..(64 * SIDE + x) * 4 + 4];
     assert_eq!(pixel(32), [220, 0, 0, 255]);
     assert_eq!(pixel(64), [20, 20, 20, 200]);
@@ -187,4 +192,14 @@ fn chunk_changes_coalesce_and_an_unload_discards_partial_work() {
     assert!(t.partial.is_none());
     assert!(t.changed);
     assert!(!t.tiles.contains_key(&[0, 0]));
+}
+
+#[test]
+fn the_color_table_asks_for_each_id_at_full_shade() {
+    // A decoder that echoes the packed value it was asked for.
+    let table = color_table(|packed| Some([packed, 0, 0, 255])).unwrap();
+    assert_eq!(table[0][0], 2);
+    assert_eq!(table[1][0], 6);
+    assert_eq!(table[63][0], 254);
+    assert!(color_table(|packed| (packed != 254).then_some([0; 4])).is_none());
 }

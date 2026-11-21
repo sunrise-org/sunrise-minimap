@@ -211,7 +211,7 @@ impl Terrain {
             }
         }
     }
-    pub fn compose(&mut self, view: View, palette: &[u32]) -> bool {
+    pub fn compose(&mut self, view: View, colors: &[[u8; 4]; MAP_COLORS]) -> bool {
         if !self.changed && self.composed.is_some_and(|old| !view.differs(old)) {
             return false;
         }
@@ -254,10 +254,12 @@ impl Terrain {
                     column(x, z).map_or([20, 20, 20, 200], |c| {
                         let shade =
                             c.shade(column(x, z - 1).map_or(c.height, |n| n.height), (x ^ z) & 1);
-                        palette.get(usize::from(c.color)).map_or([0; 4], |rgb| {
-                            let ch = |s: u32| (((rgb >> s) & 255) * shade / 255) as u8;
-                            [ch(16), ch(8), ch(0), 255]
-                        })
+                        let [r, g, b, a] = colors
+                            .get(usize::from(c.color))
+                            .copied()
+                            .unwrap_or_default();
+                        let ch = |v: u8| (u32::from(v) * shade / 255) as u8;
+                        [ch(r), ch(g), ch(b), a]
                     })
                 };
                 let o = (j * SIDE + i) * 4;
@@ -268,6 +270,24 @@ impl Terrain {
         self.composed = Some(view);
         true
     }
+}
+
+/// Map colour IDs: the base colours a column's `color` names (`MapColor.id`).
+pub const MAP_COLORS: usize = 64;
+/// Shade index 2 of a packed map colour scales every channel by 255 out of 255.
+const FULL_SHADE: u8 = 2;
+/// The RGBA of every map colour ID at full brightness, as the game decodes them.
+pub fn read_colors(host: &dyn ClientHost) -> Option<Box<[[u8; 4]; MAP_COLORS]>> {
+    let states = host.block_states();
+    color_table(|packed| states.map_color_rgba(packed))
+}
+/// The table `read_colors` builds, from a decoder of packed map colours.
+fn color_table(decode: impl Fn(u8) -> Option<[u8; 4]>) -> Option<Box<[[u8; 4]; MAP_COLORS]>> {
+    let mut table = Box::new([[0; 4]; MAP_COLORS]);
+    for (id, rgba) in table.iter_mut().enumerate() {
+        *rgba = decode(id as u8 * 4 + FULL_SHADE)?;
+    }
+    Some(table)
 }
 
 pub struct Reader<'a> {
