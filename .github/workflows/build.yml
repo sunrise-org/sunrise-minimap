@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+    outputs:
+      sdk_tag:
+        description: The SDK release tag the package was built against
+        value: ${{ jobs.build.outputs.sdk_tag }}
   workflow_dispatch:
     inputs:
       sdk_tag:
@@ -44,10 +49,17 @@ jobs:
     needs: route
     runs-on: ${{ needs.route.outputs.runner }}
     timeout-minutes: 30
+    outputs:
+      sdk_tag: ${{ steps.sdk.outputs.sdk_tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Install the game's link libraries on a GitHub-hosted runner
+        if: needs.route.outputs.runner == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq --no-install-recommends libasound2-dev libudev-dev
       - name: Check and package against the signed Sunrise SDK
         id: sdk
         env:
