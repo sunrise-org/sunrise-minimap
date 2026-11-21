@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -42,8 +43,9 @@ tag = sys.argv[3] or f"sdk-{pin['sunrise']}"
 if not re.fullmatch(r"sdk-[0-9a-f]{40}", tag):
     sys.exit("Expected sdk- followed by the full 40-character game commit")
 commit = tag.removeprefix("sdk-")
-scratch = out / "download"
-scratch.mkdir()
+# Keep the signed release files for the packaging tool's local SDK source.
+scratch = out / "download" / tag
+scratch.mkdir(parents=True)
 checksums = fetch("SHA256SUMS", SMALL).read_bytes()
 signatures = fetch("SHA256SUMS.sig", 8192).read_bytes().splitlines()
 message = scratch / "message"
@@ -98,11 +100,8 @@ for name, folder in {
     archive = verified_file(name, sdk["assets"][name]["size"])
     folder.mkdir(parents=True)
     subprocess.run(["tar", "-xJf", archive, "-C", folder, "--no-same-owner"], check=True)
-    archive.unlink()
-verified_file("surface.json", SMALL).replace(cache / "surface.json")
-index.replace(cache / "sdk.json")
-# Stamp the cache only after verifying all its inputs, like cargo-sunrise-mod does.
-(cache / "build").write_text(commit)
+shutil.copyfile(verified_file("surface.json", SMALL), cache / "surface.json")
+shutil.copyfile(index, cache / "sdk.json")
 rust = sdk["toolchain"]["rust"]
 if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", rust):
     sys.exit(f"{tag} does not pin a Rust release")

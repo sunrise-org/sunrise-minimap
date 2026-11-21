@@ -72,7 +72,8 @@ if ! tail -n 1 "$scratch/build.jsonl" | jq -e '.event == "built" and .route == "
     echo "The SDK tool did not report a successful API-only native build" >&2
     exit 1
 fi
-"$tool" sunrise-mod build
+# Packaging verifies the SDK again; read the signed files already fetched by curl.
+SUNRISE_SDK_BASE="$scratch/download" SUNRISE_MOD_CACHE="$scratch/mod-cache" "$tool" sunrise-mod build
 package=target/sunrise-mod/minimap.smod
 "$tool" sunrise-mod check "$package" --kind native-mod
 
