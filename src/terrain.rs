@@ -279,9 +279,13 @@ const FULL_SHADE: u8 = 2;
 /// The RGBA of every map colour ID at full brightness, as the game decodes them.
 pub fn read_colors(host: &dyn ClientHost) -> Option<Box<[[u8; 4]; MAP_COLORS]>> {
     let states = host.block_states();
+    color_table(|packed| states.map_color_rgba(packed))
+}
+/// The table `read_colors` builds, from a decoder of packed map colours.
+fn color_table(decode: impl Fn(u8) -> Option<[u8; 4]>) -> Option<Box<[[u8; 4]; MAP_COLORS]>> {
     let mut table = Box::new([[0; 4]; MAP_COLORS]);
     for (id, rgba) in table.iter_mut().enumerate() {
-        *rgba = states.map_color_rgba(id as u8 * 4 + FULL_SHADE)?;
+        *rgba = decode(id as u8 * 4 + FULL_SHADE)?;
     }
     Some(table)
 }

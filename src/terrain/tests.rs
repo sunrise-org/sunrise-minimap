@@ -193,3 +193,13 @@ fn chunk_changes_coalesce_and_an_unload_discards_partial_work() {
     assert!(t.changed);
     assert!(!t.tiles.contains_key(&[0, 0]));
 }
+
+#[test]
+fn the_color_table_asks_for_each_id_at_full_shade() {
+    // A decoder that echoes the packed value it was asked for.
+    let table = color_table(|packed| Some([packed, 0, 0, 255])).unwrap();
+    assert_eq!(table[0][0], 2);
+    assert_eq!(table[1][0], 6);
+    assert_eq!(table[63][0], 254);
+    assert!(color_table(|packed| (packed != 254).then_some([0; 4])).is_none());
+}
