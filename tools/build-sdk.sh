@@ -68,7 +68,10 @@ if ! jq -nc --arg dir "$toolchain" --arg host "$host" --arg cargo "${CARGO_HOME:
     tail -n 1 "$scratch/build.jsonl" | jq -r .error >&2
     exit 1
 fi
-tail -n 1 "$scratch/build.jsonl" | jq -e '.event == "built" and .route == "prebuilt"' >/dev/null
+if ! tail -n 1 "$scratch/build.jsonl" | jq -e '.event == "built" and .route == "prebuilt-api"' >/dev/null; then
+    echo "The SDK tool did not report a successful API-only native build" >&2
+    exit 1
+fi
 "$tool" sunrise-mod build
 package=target/sunrise-mod/minimap.smod
 "$tool" sunrise-mod check "$package" --kind native-mod
