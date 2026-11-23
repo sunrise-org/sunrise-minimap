@@ -4,11 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_call:
-    outputs:
-      sdk_tag:
-        description: The SDK release tag the package was built against
-        value: ${{ jobs.build.outputs.sdk_tag }}
   workflow_dispatch:
     inputs:
       sdk_tag:
@@ -49,8 +44,6 @@ jobs:
     needs: route
     runs-on: ${{ needs.route.outputs.runner }}
     timeout-minutes: 30
-    outputs:
-      sdk_tag: ${{ steps.sdk.outputs.sdk_tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
