@@ -4,88 +4,14 @@ on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Check that the tag names the manifest's version on a reviewed commit
-        run: |
-          version=$(python3 -c 'import tomllib; print(tomllib.load(open("sunrise-mod.toml", "rb"))["version"])')
-          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match version $version in sunrise-mod.toml" >&2
-            exit 1
-          fi
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "Tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main" >&2
-            exit 1
-          fi
-
-  build:
-    needs: version
-    uses: ./.github/workflows/build.yml
-
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    # The signing key is a secret of this environment, which only `v*` tags may deploy to.
-    environment: release
+  release:
     permissions:
       contents: write
-    env:
-      SDK_TAG: ${{ needs.build.outputs.sdk_tag }}
-      # Only whether the key exists; the key itself reaches the signing step alone.
-      HAS_SIGNING_KEY: ${{ secrets.MINISIGN_SECRET_KEY != '' }}
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: minimap-${{ needs.build.outputs.sdk_tag }}-unsigned
-          path: dist
-      - name: Check the package against its checksum
-        working-directory: dist
-        run: |
-          if [[ "$(cat SHA256SUMS)" != "$(sha256sum minimap.smod)" ]]; then
-            echo "SHA256SUMS must be exactly the checksum of minimap.smod" >&2
-            exit 1
-          fi
-      - name: Sign the package
-        id: sign
-        # A minisign secret key made without a password (`minisign -G -W`). Unset publishes unsigned.
-        if: env.HAS_SIGNING_KEY == 'true'
-        working-directory: dist
-        env:
-          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -yq --no-install-recommends minisign
-          key=$(mktemp "$RUNNER_TEMP/minisign.XXXXXXXX")
-          trap 'rm -f -- "$key"' EXIT
-          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key"
-          rm -f -- minimap.smod.minisig
-          minisign -S -s "$key" -m minimap.smod -t "minimap $GITHUB_REF_NAME, $SDK_TAG"
-      - name: Publish the release
-        working-directory: dist
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SIGNED: ${{ steps.sign.outcome == 'success' }}
-        run: |
-          tagged=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF" --jq .sha)
-          if [[ "$tagged" != "$GITHUB_SHA" ]]; then
-            echo "Tag $GITHUB_REF_NAME moved to $tagged after this build of $GITHUB_SHA" >&2
-            exit 1
-          fi
-          assets=(minimap.smod SHA256SUMS)
-          signed="unsigned"
-          if [[ "$SIGNED" == true ]]; then
-            assets+=(minimap.smod.minisig)
-            signed="signed with minisign"
-          fi
-          gh release create "$GITHUB_REF_NAME" "${assets[@]}" -R "$GITHUB_REPOSITORY" --verify-tag \
-            --title "Sunrise Minimap ${GITHUB_REF_NAME#v}" \
-            --notes "Built against the signed Sunrise SDK \`$SDK_TAG\`; $signed. SHA-256: \`$(cut -d' ' -f1 SHA256SUMS)\`."
+      id-token: write
+      attestations: write
+    uses: sunrise-org/sunrise-mods/.github/workflows/release.yml@release-v1
+    with:
+      path: .

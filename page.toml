@@ -1,0 +1,11 @@
+summary = "See the terrain around you on a live minimap in your HUD."
+description = """
+Sunrise Minimap shows the terrain around you while you explore. It draws only terrain your client has loaded. Underground, it shows the floor and cuts walls away above eye level so you can see passages around you.
+
+The minimap starts off. Go to **Options → Mods → Sunrise Minimap → Config** and turn on **Show minimap**. Choose the corner, size, shape and zoom that suit your screen. The map points north by default. Turn on **Rotate with player** to put the direction you're facing at the top and show a north marker. Press F1 to hide the minimap with the rest of the HUD.
+"""
+categories = ["utility"]
+
+[[screenshots]]
+path = "page/overworld.png"
+caption = "The minimap shows nearby terrain in the top-right corner of the HUD."

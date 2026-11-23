@@ -8,20 +8,12 @@ Enable **Show minimap** in **Options → Mods → Sunrise Minimap → Config**. 
 
 On Linux x86-64, run `bash tools/build-sdk.sh`. It verifies the pinned Sunrise SDK release, checks the Rust source, compiles the mod against the prebuilt game, then produces an **unsigned** `target/sdk-<commit>/minimap.smod` and checksum. Building or checking the package does not need a game account or game resources. A CI dispatch can test a different signed SDK via `sdk_tag`; it does not change the checkout's pin.
 
-## Release
-
-Push a tag `v<version>` matching `version` in `sunrise-mod.toml`. The `Release` workflow builds the package against the pinned SDK as above, then publishes `minimap.smod` and `SHA256SUMS` as that tag's GitHub release. If the `release` environment's secret `MINISIGN_SECRET_KEY` holds a minisign secret key made without a password (`minisign -G -W`), it also signs the package and publishes `minimap.smod.minisig`; without it the release is unsigned. Only the publish job runs in that environment; restrict its deployments to `v*` tags so no pull request or branch run can reach the key. The workflow refuses a tag that isn't on `main` or that moves while it runs. A release that already exists is never replaced: if publishing fails, re-run the failed jobs; to change a published release, tag a new version.
-
 The mod owns the tile cache and dynamic HUD texture. It reads map colours and whether the debug overlay is visible through the mod API. The mod does not include a copy of the game's palette or textures.
 
-## Verifying releases
+## Release
 
-Release packages are signed with Sunrise's official-mod key, [`minisign.pub`](minisign.pub) (key ID `69DA4581EF8B9FDA`). Download `minimap.smod` and its `minimap.smod.minisig` from the same release into one folder, then run:
+After the mod is [registered](https://github.com/sunrise-org/sunrise-mods#the-new-registry-being-built), run `cargo sunrise-mod release <version>` from a clean checkout of `main` using the current mod tool. For the first registry release, choose a new version; `v0.1.0` was published before the shared workflow.
 
-```sh
-minisign -Vm minimap.smod -p minisign.pub
-```
-
-Once the mod is listed in Sunrise's registry, its entry pins this key, and the launcher refuses a registry install whose signature doesn't verify against it.
+The shared workflow publishes a source `.smod` and a separate `.page.tar` built from [`page.toml`](page.toml) and its images. Both have GitHub artifact attestations. The registry checks those attestations against this repository and the shared workflow before review. The launcher builds the native mod against the player's game build from source and the lockfile.
 
 Licence: [MIT](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) for the DCO sign-off.
