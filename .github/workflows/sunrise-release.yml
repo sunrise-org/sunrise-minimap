@@ -1,11 +1,9 @@
-name: Release
-
+# Written by `cargo sunrise-mod release`, which rewrites it: edits here are replaced.
+name: Sunrise release
 on:
   push:
     tags: ['v*']
-
 permissions: {}
-
 jobs:
   release:
     permissions:
