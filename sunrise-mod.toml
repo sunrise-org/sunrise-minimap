@@ -3,6 +3,7 @@ name = "Sunrise Minimap"
 version = "0.1.0"
 description = "A live terrain map for the HUD"
 authors = ["Sunrise"]
+license = "MIT"
 api = "0.2"
 side = "client"
 capabilities = ["registries"]
