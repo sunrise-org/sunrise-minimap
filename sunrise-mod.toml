@@ -1,6 +1,6 @@
 id = "minimap"
 name = "Sunrise Minimap"
-version = "0.1.0"
+version = "0.1.1"
 description = "A live terrain map for the HUD"
 authors = ["Sunrise"]
 license = "MIT"
