@@ -131,7 +131,7 @@ impl Map {
             let r = if self.texture {
                 host.update_dynamic_texture(texture(), side, side, &self.terrain.image)
             } else {
-                host.create_dynamic_texture(texture(), side, side, &self.terrain.image)
+                host.create_dynamic_texture(texture(), side, side, 1, &self.terrain.image)
             };
             match r {
                 Ok(()) => {
